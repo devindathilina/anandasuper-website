@@ -1,0 +1,196 @@
+{
+  "name": "Upload Order - Image to Cart",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "upload-order",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        320,
+        -112
+      ],
+      "id": "30d2b537-c8c4-454b-b5b2-b7382fcba37f",
+      "name": "Upload Order",
+      "webhookId": "upload-order-webhook",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "xiZ7k5r7Ys0j5LTT",
+          "name": "N8N Internal Secret"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || {};\nconst imageBase64 = body.image_base64 || '';\n// Extract just the base64 string without the data:image prefix\nconst imageData = imageBase64.replace(/^data:image\\/[a-z]+;base64,/, '');\n\nreturn {\n  geminiPayload: {\n    contents: [\n      {\n        parts: [\n          {\n            inline_data: {\n              mime_type: 'image/jpeg',\n              data: imageData\n            }\n          },\n          {\n            text: 'Extract items and quantities from this shopping list image. Return ONLY a clean JSON array with this exact format: [{\"item\":\"product name\",\"qty\":number}]. Do not include markdown, explanations, or extra text.'\n          }\n        ]\n      }\n    ],\n    generationConfig: {\n      responseMimeType: 'application/json',\n      temperature: 0.1\n    }\n  },\n  price_type: body.price_type || 'Retail'\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        544,
+        -112
+      ],
+      "id": "92ce744f-8bb0-47fc-8351-3023d51a4247",
+      "name": "Prepare Gemini Request"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.geminiPayload }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        768,
+        -112
+      ],
+      "id": "ef644685-0f91-4316-9b2b-f7fcfbbaa26c",
+      "name": "Gemini API",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "UXlV04CK20KgMEVo",
+          "name": "Gemini API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst priceType = $node[\"Prepare Gemini Request\"].json.price_type || \"Retail\";\n\nlet rawText = '';\nif (response.candidates && response.candidates[0]?.content?.parts[0]) {\n  rawText = response.candidates[0].content.parts[0].text;\n}\n\nlet items = [];\ntry {\n  // Standardize the text by removing potential markdown wrapping\n  let cleanText = rawText.trim().replace(/^```json/i, '').replace(/```$/i, '').trim();\n  items = JSON.parse(cleanText);\n  \n  if (!Array.isArray(items)) items = [items];\n\n  items = items.map(item => ({\n    item: String(item.item || item.name || '').trim(),\n    qty: parseInt(item.qty || item.quantity || 1, 10)\n  })).filter(item => item.item.length > 0);\n} catch (e) {\n  items = [];\n}\n\nreturn {\n  items,\n  price_type: priceType\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        -112
+      ],
+      "id": "dc5259d8-c7d6-4493-8a1f-12bc21a69d1b",
+      "name": "Parse Response"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://anandasuper.com/api/orders/fuzzy_match_products.php",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"items\": {{ JSON.stringify($json.items) }},\n  \"price_type\": \"{{ $json.price_type }}\"\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1200,
+        -112
+      ],
+      "id": "b9ba0bf0-299c-4eeb-a8ce-12f10f9eb3b6",
+      "name": "Fuzzy Match Products",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "xiZ7k5r7Ys0j5LTT",
+          "name": "N8N Internal Secret"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1424,
+        -112
+      ],
+      "id": "8d20a0b5-3f20-43c2-971a-0ca24d95816c",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Upload Order": {
+      "main": [
+        [
+          {
+            "node": "Prepare Gemini Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Gemini Request": {
+      "main": [
+        [
+          {
+            "node": "Gemini API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini API": {
+      "main": [
+        [
+          {
+            "node": "Parse Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Response": {
+      "main": [
+        [
+          {
+            "node": "Fuzzy Match Products",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fuzzy Match Products": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "78aebf18-719d-492b-ae77-e9e0d4e91f84",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d7c00383bb492ae82ca9fdda1816c0cd0c102d136fd932a5a50a49e60dba1b3c"
+  },
+  "id": "mzGxGZh3aPPwtjkV",
+  "tags": []
+}

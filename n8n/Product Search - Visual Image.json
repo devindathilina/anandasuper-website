@@ -1,0 +1,196 @@
+{
+  "name": "Product Search - Visual Image",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "search-product",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "6498f8b2-40f7-4341-892c-5dd8ad9c28b3",
+      "name": "Search Product",
+      "webhookId": "search-product-webhook",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "xiZ7k5r7Ys0j5LTT",
+          "name": "N8N Internal Secret"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || {};\nconst imageBase64 = body.image_base64 || '';\nconst priceType = body.price_type || 'Retail';\n\nconst mimeMatch = imageBase64.match(/^data:(image\\/[a-zA-Z+]+);base64,/);\nconst mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';\n\nconst imageData = imageBase64.replace(/^data:image\\/[a-zA-Z+]+;base64,/, '');\n\nreturn {\n  geminiPayload: {\n    contents: [\n      {\n        parts: [\n          {\n            text: 'You are a product identifier. Look at this product image and identify the exact product name. If there is a clear label/brand name visible, output ONLY the exact product name (e.g., \"Fresh Milk 1L\", \"Coca Cola 500ml\"). If you cannot read the label clearly, describe what you see briefly. Return ONLY the product name as plain text, no explanations, no markdown, no JSON. Just the name.'\n          },\n          {\n            inline_data: {\n              mime_type: mimeType,\n              data: imageData\n            }\n          }\n        ]\n      }\n    ],\n    generationConfig: {\n      responseMimeType: 'text/plain',\n      temperature: 0.2,\n      maxOutputTokens: 80\n    }\n  },\n  price_type: priceType\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "0b21816f-ba56-446d-8654-95ee241b1cb1",
+      "name": "Prepare Gemini Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst priceType = $node[\"Prepare Gemini Request\"].json.price_type || \"Retail\";\n\nlet productName = '';\nif (response.candidates && response.candidates.length > 0 && response.candidates[0]?.content?.parts?.[0]) {\n  productName = response.candidates[0].content.parts[0].text;\n}\n\nproductName = productName.trim();\n\nif (productName.length === 0) {\n  productName = 'unknown product';\n}\n\nreturn {\n  product_name: productName,\n  price_type: priceType\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "22fd70bd-4019-4040-9ec6-baed0c3bae0d",
+      "name": "Extract Product Name"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://anandasuper.com/api/orders/match_product_by_name.php",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"product_name\": \"{{$json.product_name}}\",\n  \"price_type\": \"{{$json.price_type}}\"\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        880,
+        0
+      ],
+      "id": "65eb7fed-1fa0-4ccc-953e-b807a76f26c0",
+      "name": "Match Product",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "xiZ7k5r7Ys0j5LTT",
+          "name": "N8N Internal Secret"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1104,
+        0
+      ],
+      "id": "de581618-ea80-44b3-b07e-4018fe32aadd",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.geminiPayload }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        448,
+        0
+      ],
+      "id": "06d3c40d-96ca-484a-b988-3269ddbf0b77",
+      "name": "Gemini API",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "UXlV04CK20KgMEVo",
+          "name": "Gemini API Key"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Search Product": {
+      "main": [
+        [
+          {
+            "node": "Prepare Gemini Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Gemini Request": {
+      "main": [
+        [
+          {
+            "node": "Gemini API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Product Name": {
+      "main": [
+        [
+          {
+            "node": "Match Product",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Match Product": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini API": {
+      "main": [
+        [
+          {
+            "node": "Extract Product Name",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "3bfb94b2-b3c2-404c-9584-e7d6f970b4e3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d7c00383bb492ae82ca9fdda1816c0cd0c102d136fd932a5a50a49e60dba1b3c"
+  },
+  "id": "0mh9fuw56ngvB9BL",
+  "tags": []
+}
