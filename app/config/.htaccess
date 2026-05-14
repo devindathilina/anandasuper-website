@@ -1,0 +1,6 @@
+# Disable directory listing
+Options -Indexes
+
+# Block all direct web access
+Order allow,deny
+Deny from all

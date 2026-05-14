@@ -1,0 +1,16 @@
+.border-left-primary { border-left: 4px solid #0d6efd; }
+.border-left-success { border-left: 4px solid #198754; }
+.border-left-danger { border-left: 4px solid #dc3545; }
+.border-left-secondary { border-left: 4px solid #6c757d; }
+.border-left-warning { border-left: 4px solid #ffc107; }
+.border-left-info { border-left: 4px solid #0dcaf0; }
+.border-left-dark { border-left: 4px solid #212529; }
+
+.card-stats {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-stats:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
