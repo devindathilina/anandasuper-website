@@ -257,7 +257,9 @@ $page_name = "Admin Dashboard";
                             },
                             ticks: {
                                 color: '#6c757d',
-                                font: { size: 11 },
+                                font: {
+                                    size: 11
+                                },
                                 maxRotation: 45,
                                 minRotation: 0
                             }
@@ -269,7 +271,9 @@ $page_name = "Admin Dashboard";
                             },
                             ticks: {
                                 color: '#6c757d',
-                                font: { size: 11 },
+                                font: {
+                                    size: 11
+                                },
                                 callback: function(v) {
                                     return 'LKR ' + v.toLocaleString();
                                 }
@@ -333,20 +337,28 @@ $page_name = "Admin Dashboard";
                     },
                     scales: {
                         x: {
-                            grid: { display: false },
+                            grid: {
+                                display: false
+                            },
                             ticks: {
                                 color: '#6c757d',
-                                font: { size: 11 },
+                                font: {
+                                    size: 11
+                                },
                                 maxRotation: 45,
                                 minRotation: 0
                             }
                         },
                         y: {
                             beginAtZero: true,
-                            grid: { color: 'rgba(0,0,0,0.05)' },
+                            grid: {
+                                color: 'rgba(0,0,0,0.05)'
+                            },
                             ticks: {
                                 color: '#6c757d',
-                                font: { size: 11 },
+                                font: {
+                                    size: 11
+                                },
                                 callback: function(v) {
                                     return v.toFixed(0) + '%';
                                 }
@@ -366,19 +378,19 @@ $page_name = "Admin Dashboard";
             var html = '';
             for (var i = 0; i < products.length; i++) {
                 var p = products[i];
-                var productImage = p.product_image ? '<img src="' + p.product_image + '" alt="" style="width:40px;height:40px;object-fit:cover;border-radius:4px;">' : '<div class="bg-secondary text-white d-inline-flex align-items-center justify-content-center" style="width:40px;height:40px;border-radius:4px;"><i class="fas fa-box"></i></div>';
+                var productImage = p.product_image ? '<img src="../assets/product/' + p.product_image + '" alt="" style="width:40px;height:40px;object-fit:cover;border-radius:4px;">' : '<div class="bg-secondary text-white d-inline-flex align-items-center justify-content-center" style="width:40px;height:40px;border-radius:4px;"><i class="fas fa-box"></i></div>';
                 html += '<tr>' +
                     '<td class="text-center">' + (i + 1) + '</td>' +
                     '<td>' +
-                        '<div class="d-flex align-items-center">' +
-                            productImage +
-                            '<span class="ml-2">' + p.product_name + '</span>' +
-                        '</div>' +
+                    '<div class="d-flex align-items-center">' +
+                    productImage +
+                    '<span class="ml-2">' + p.product_name + '</span>' +
+                    '</div>' +
                     '</td>' +
                     '<td class="text-center">' + p.total_qty_sold + '</td>' +
                     '<td class="text-center">' + p.order_count + '</td>' +
                     '<td class="text-right">' + formatCurrency(p.total_revenue) + '</td>' +
-                '</tr>';
+                    '</tr>';
             }
             tbody.html(html);
         }
@@ -433,4 +445,5 @@ $page_name = "Admin Dashboard";
         });
     </script>
 </body>
+
 </html>
